@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-display: 'Inter', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    @apply bg-ajax-bg text-ajax-text antialiased;
+  }
+
+  ::selection {
+    @apply bg-ajax-accent/30 text-white;
+  }
+}
+
+@layer components {
+  .card-glass {
+    @apply bg-ajax-surface/80 backdrop-blur-xl border border-ajax-border rounded-2xl;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-ajax-accent hover:bg-ajax-accent-glow
+           text-white font-medium rounded-xl
+           transition-all duration-200
+           hover:shadow-lg hover:shadow-ajax-accent/25
+           active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-ajax-surface hover:bg-ajax-border
+           text-ajax-text border border-ajax-border
+           font-medium rounded-xl
+           transition-all duration-200
+           active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+           text-ajax-text-dim hover:text-ajax-text
+           hover:bg-ajax-surface rounded-lg
+           transition-all duration-200;
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.15),
+                0 0 80px rgba(139, 92, 246, 0.05);
+  }
+
+  .glow-warm {
+    box-shadow: 0 0 40px rgba(249, 115, 22, 0.15),
+                0 0 80px rgba(249, 115, 22, 0.05);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-ajax-accent to-ajax-cool;
+  }
+
+  .taste-bar {
+    @apply h-2 rounded-full transition-all duration-700 ease-out;
+  }
+
+  /* DNA Card specific */
+  .dna-card {
+    @apply relative overflow-hidden rounded-3xl p-8;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  }
+
+  .dna-card-warm {
+    background: linear-gradient(135deg, #1a1a2e 0%, #2d1b33 50%, #3d1f20 100%);
+  }
+
+  .dna-card-cool {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #172554 100%);
+  }
+
+  .dna-card-niche {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a2e 50%, #0a1628 100%);
+  }
+}
+
+/* Smooth page transitions */
+@layer utilities {
+  .animate-in {
+    animation: animateIn 0.5s ease-out;
+  }
+
+  @keyframes animateIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+}
