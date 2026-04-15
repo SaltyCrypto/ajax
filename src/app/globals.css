@@ -85,6 +85,58 @@
   }
 }
 
+/* Chromatic aberration on hover */
+.chromatic-hover {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.chromatic-hover:hover {
+  filter: drop-shadow(-2px 0 0 rgba(255, 0, 0, 0.15))
+          drop-shadow(2px 0 0 rgba(0, 255, 255, 0.15));
+  animation: chromatic-shift 0.5s ease-in-out;
+}
+
+@keyframes chromatic-shift {
+  0%, 100% { filter: none; }
+  25% {
+    filter: drop-shadow(-3px 0 0 rgba(255, 0, 0, 0.2))
+            drop-shadow(3px 0 0 rgba(0, 255, 255, 0.2));
+  }
+  75% {
+    filter: drop-shadow(-1px 0 0 rgba(255, 0, 0, 0.1))
+            drop-shadow(1px 0 0 rgba(0, 255, 255, 0.1));
+  }
+}
+
+/* Liquid distortion effect */
+.liquid-hover {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+              filter 0.4s ease;
+}
+
+.liquid-hover:hover {
+  transform: scale(1.02) rotate(-0.5deg);
+  filter: drop-shadow(0 20px 40px rgba(139, 92, 246, 0.3));
+}
+
+/* Glow pulse for interactive elements */
+.glow-pulse {
+  animation: glow-pulse-anim 3s ease-in-out infinite;
+}
+
+@keyframes glow-pulse-anim {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15),
+                0 0 40px rgba(139, 92, 246, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.25),
+                0 0 60px rgba(139, 92, 246, 0.1),
+                0 0 100px rgba(139, 92, 246, 0.05);
+  }
+}
+
 /* Smooth page transitions */
 @layer utilities {
   .animate-in {

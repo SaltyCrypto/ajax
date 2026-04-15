@@ -19,7 +19,7 @@ export function getSpotifyAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: process.env.SPOTIFY_CLIENT_ID!,
     response_type: 'code',
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/spotify/callback`,
+    redirect_uri: `${process.env.SPOTIFY_REDIRECT_URI || process.env.NEXT_PUBLIC_APP_URL + '/api/auth/spotify/callback'}`,
     scope: SCOPES.join(' '),
     state,
     show_dialog: 'true',
@@ -42,7 +42,7 @@ export async function exchangeSpotifyCode(code: string): Promise<{
     },
     body: new URLSearchParams({
       code,
-      redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/spotify/callback`,
+      redirect_uri: `${process.env.SPOTIFY_REDIRECT_URI || process.env.NEXT_PUBLIC_APP_URL + '/api/auth/spotify/callback'}`,
       grant_type: 'authorization_code',
     }),
   });
