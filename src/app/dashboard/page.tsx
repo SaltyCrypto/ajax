@@ -215,6 +215,35 @@ export default async function DashboardPage({
           </section>
         )}
 
+        {/* Feed-sharing loop entry points */}
+        <section className="mb-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link
+            href="/discover"
+            className="card-glass p-5 hover:border-ajax-accent/40 transition-colors group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-white font-medium">The Bulletin</span>
+              <span className="text-ajax-accent opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+            </div>
+            <p className="text-xs text-ajax-text-dim leading-relaxed">
+              7 things your taste neighbors saw today that you haven't.
+            </p>
+          </Link>
+          <Link
+            href="/capture"
+            className="card-glass p-5 hover:border-ajax-accent/40 transition-colors group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-white font-medium">Capture feeds</span>
+              <span className="text-ajax-accent opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+            </div>
+            <p className="text-xs text-ajax-text-dim leading-relaxed">
+              Install the bookmarklet. Snapshot what YouTube shows you, home or
+              history.
+            </p>
+          </Link>
+        </section>
+
         {cardData && (
           <section className="mb-12">
             <div className="flex items-center justify-between mb-6">
