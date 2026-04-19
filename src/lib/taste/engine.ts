@@ -1,8 +1,16 @@
 // ============================================
-// AJAX — Main Taste Engine
-// Orchestrates: data fetching → category mapping →
-// vector computation → personality → insights →
-// profile storage
+// AJAX \u2014 Main Taste Engine (v2)
+// Orchestrates: data fetching \u2192 category mapping \u2192
+// vector computation \u2192 personality \u2192 sonic id \u2192
+// insights \u2192 profile storage.
+//
+// v2 changes vs v1:
+//   - Engagement-weighted platform blend (likes/subs) instead of raw count
+//   - Real freshness from saved_at timestamps
+//   - Logistic mainstream normalization
+//   - Confidence model propagates to insights
+//   - 4th personality axis (Sonic Identity)
+//   - Evocative compound title
 // ============================================
 
 import { createServiceClient } from '@/lib/supabase/server';
@@ -11,7 +19,6 @@ import {
   mapYouTubeCategoryIdToCategories,
   mapSpotifyGenresToCategories,
   getTopSpotifyGenres,
-  type TasteCategory,
 } from './categories';
 import {
   normalizeWeights,
@@ -19,10 +26,12 @@ import {
   computeCoherence,
   computeDiversity,
   computeMainstream,
-  computeFreshness,
+  computeFreshnessFromDates,
   computeAudioSignature,
 } from './vector';
 import { classifyTempo, classifyNovelty, classifyIdentity, buildCompoundPersonality } from './personality';
+import { classifySonicIdentity, buildCompoundTitle } from './signatures';
+import { crossPlatformConfidence, platformEngagement } from './confidence';
 import { generateInsights, selectCardInsights, generateTemplateDescription } from './insights';
 import type { CategoryWeights, TasteProfile } from '@/types';
 
@@ -133,13 +142,20 @@ export async function computeTasteProfile(userId: string): Promise<TasteProfile>
   }
   const spotifyCategories = normalizeWeights(spCategoryCounts) as CategoryWeights;
 
-  // --- Combined Categories ---
-  // Weight YouTube and Spotify proportionally to data volume
-  const ytDataPoints = subs.length + likes.length;
-  const spDataPoints = allSpArtists.length + saved.length;
-  const totalDataPoints = ytDataPoints + spDataPoints || 1;
-  const ytWeight = ytDataPoints / totalDataPoints;
-  const spWeight = spDataPoints / totalDataPoints;
+  // --- Combined Categories (v2: engagement-weighted blend) ---
+  // Raw item count was a bad proxy because Spotify saves scale differently
+  // from YT subs; a user with 500 passively saved tracks and 20 heavily
+  // engaged YT channels deserves YT to weigh more than 4%. Engagement =
+  // committed acts per breadth unit + a volume tempering factor.
+  const engagement = platformEngagement({
+    ytSubs: subs.length,
+    ytLikes: likes.length,
+    spArtists: allSpArtists.length,
+    spSaved: saved.length,
+  });
+  const totalEngagement = engagement.youtube + engagement.spotify || 1;
+  const ytWeight = engagement.youtube / totalEngagement;
+  const spWeight = engagement.spotify / totalEngagement;
 
   const combinedCounts: Record<string, number> = {};
   for (const [cat, w] of Object.entries(youtubeCategories)) {
@@ -179,10 +195,12 @@ export async function computeTasteProfile(userId: string): Promise<TasteProfile>
   ];
   const mainstreamScore = computeMainstream(popularities);
 
-  // Freshness: ratio of short-term to long-term data
-  const shortCount = (spArtistsShort?.length || 0) + (spTracksShort?.length || 0);
-  const longCount = (spArtistsLong?.length || 0) + (spTracksLong?.length || 0);
-  const freshnessScore = computeFreshness(longCount || 1, shortCount);
+  // Freshness (v2): actual saved_at timestamps. The old short/long count
+  // ratio was ~1.0 for nearly every user because Spotify returns 50 items
+  // per time_range regardless of engagement level.
+  const freshnessScore = computeFreshnessFromDates(
+    saved.map(s => s.saved_at)
+  );
 
   const coherenceScore = computeCoherence(youtubeCategories, spotifyCategories);
 
@@ -210,11 +228,32 @@ export async function computeTasteProfile(userId: string): Promise<TasteProfile>
   const shortTermWeights = normalizeWeights(shortTermCounts) as CategoryWeights;
   const longTermWeights = normalizeWeights(longTermCounts) as CategoryWeights;
 
+  // Compute confidence first so classifiers can later be gated on it.
+  const ytItemCount = subs.length + likes.length;
+  const spItemCount = allSpArtists.length + allSpTracks.length + saved.length;
+  const confidence = crossPlatformConfidence(ytItemCount, spItemCount);
+
   const tempo = classifyTempo({ categoryWeights, shortTermWeights, longTermWeights });
-  const novelty = classifyNovelty({ mainstreamScore, freshnessScore });
+
+  // Small-channel ratio feeds novelty (Explorer bias)
+  const smallChannelRatio =
+    subs.length > 0
+      ? subs.filter(s => s.subscriber_count !== null && s.subscriber_count < 100000).length /
+        subs.length
+      : 0;
+
+  const novelty = classifyNovelty({ mainstreamScore, freshnessScore, smallChannelRatio });
   const identity = classifyIdentity({ coherence: coherenceScore, youtubeWeights: youtubeCategories, spotifyWeights: spotifyCategories });
 
+  const sonic = classifySonicIdentity(audioSignature);
+
   const personalityCompound = buildCompoundPersonality(tempo.label, novelty.label, identity.label);
+  const compoundTitle = buildCompoundTitle({
+    tempo: tempo.label,
+    novelty: novelty.label,
+    identity: identity.label,
+    sonic: sonic.label,
+  });
 
   // --- Compute category drift for insights ---
   const topSorted = (w: CategoryWeights) => Object.entries(w).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
@@ -249,6 +288,7 @@ export async function computeTasteProfile(userId: string): Promise<TasteProfile>
     freshnessScore,
     coherenceScore,
     audioSignature,
+    sonicIdentity: sonic.label,
     youtubeSubCount: subs.length,
     youtubeLikeCount: likes.length,
     spotifyArtistCount: allSpArtists.length,
@@ -263,9 +303,12 @@ export async function computeTasteProfile(userId: string): Promise<TasteProfile>
     shortTermTopCategory: shortTopCat,
     longTermTopCategory: longTopCat,
     categoryDrift,
+    shortTermWeights,
+    longTermWeights,
     personalityTempo: tempo.label,
     personalityNovelty: novelty.label,
     personalityIdentity: identity.label,
+    confidence: confidence.combined,
   });
 
   const cardInsights = selectCardInsights(allInsights, 3);
@@ -304,7 +347,7 @@ export async function computeTasteProfile(userId: string): Promise<TasteProfile>
   // --- Build profile ---
   const profile: TasteProfile = {
     user_id: userId,
-    version: 1,
+    version: 2,
     category_weights: categoryWeights,
     youtube_categories: youtubeCategories,
     spotify_categories: spotifyCategories,
@@ -319,15 +362,24 @@ export async function computeTasteProfile(userId: string): Promise<TasteProfile>
     personality_novelty: novelty.label,
     personality_identity: identity.label,
     personality_compound: personalityCompound,
+    personality_sonic: sonic.label,
+    compound_title: compoundTitle,
+    confidence: confidence.combined,
+    confidence_youtube: confidence.youtube,
+    confidence_spotify: confidence.spotify,
     description,
     insights: allInsights,
     computed_at: new Date().toISOString(),
   };
 
   // --- Save to database ---
-  await supabase.from('taste_profiles').upsert({
+  // v2 columns (personality_sonic, compound_title, confidence*) added by
+  // migration 003_prediction_engine_v2.sql. Attempt the full v2 upsert;
+  // if the migration hasn't been applied yet on this environment, gracefully
+  // retry without the new columns so the compute still persists.
+  const v1Row = {
     user_id: userId,
-    version: 1,
+    version: 2,
     category_weights: categoryWeights,
     youtube_categories: youtubeCategories,
     spotify_categories: spotifyCategories,
@@ -345,9 +397,30 @@ export async function computeTasteProfile(userId: string): Promise<TasteProfile>
     description,
     insights: allInsights,
     computed_at: new Date().toISOString(),
-  }, {
-    onConflict: 'user_id',
-  });
+  };
+  const v2Row = {
+    ...v1Row,
+    personality_sonic: sonic.label,
+    compound_title: compoundTitle,
+    confidence: confidence.combined,
+    confidence_youtube: confidence.youtube,
+    confidence_spotify: confidence.spotify,
+  };
+  const { error: v2Err } = await supabase
+    .from('taste_profiles')
+    .upsert(v2Row, { onConflict: 'user_id' });
+  if (v2Err) {
+    // Most likely cause: migration 003 hasn't been applied on this env.
+    // Log once, retry with the v1 column set, and let the in-memory profile
+    // still carry the v2 fields back to the caller.
+    console.warn('[engine] v2 upsert failed, retrying with v1 columns:', v2Err.message);
+    const { error: v1Err } = await supabase
+      .from('taste_profiles')
+      .upsert(v1Row, { onConflict: 'user_id' });
+    if (v1Err) {
+      console.error('[engine] v1 upsert also failed:', v1Err);
+    }
+  }
 
   // Save weekly snapshot
   await supabase.from('taste_snapshots').insert({

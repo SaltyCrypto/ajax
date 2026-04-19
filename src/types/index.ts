@@ -112,6 +112,16 @@ export interface AudioSignature {
   instrumentalness: number;
 }
 
+export type SonicIdentity =
+  | 'Melancholic'
+  | 'Euphoric'
+  | 'Intense'
+  | 'Cerebral'
+  | 'Dreamy'
+  | 'Theatrical'
+  | 'Kinetic'
+  | 'Balanced';
+
 export interface TasteProfile {
   user_id: string;
   version: number;
@@ -129,6 +139,13 @@ export interface TasteProfile {
   personality_novelty: PersonalityNovelty;
   personality_identity: PersonalityIdentity;
   personality_compound: string;  // "Explorer x Deep Diver x Shapeshifter"
+  // v2 additions
+  personality_sonic?: SonicIdentity;   // 4th axis: how the music feels
+  compound_title?: string;             // Evocative 2-3 word title e.g. "The Restless Specialist"
+  confidence?: number;                 // 0-1, how certain the profile is overall
+  confidence_youtube?: number;
+  confidence_spotify?: number;
+  // end v2
   description: string;           // AI-generated one-liner
   insights: TasteInsight[];
   computed_at: string;

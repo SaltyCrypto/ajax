@@ -4,7 +4,9 @@
 // unified taste categories
 // ============================================
 
-// The 40 unified taste categories
+// The 46 unified taste categories (v2: +6 mood categories for finer
+// emotional granularity — many signals used to collapse to 'Intellectual'
+// or 'Emotional' too aggressively).
 export const TASTE_CATEGORIES = [
   // Content categories
   'Music', 'Film', 'TV & Series', 'Gaming', 'Tech', 'Science',
@@ -17,6 +19,8 @@ export const TASTE_CATEGORIES = [
   'Ambient & Chill', 'High Energy', 'Intellectual', 'Emotional',
   'Funny & Light', 'Intense & Dark', 'Nostalgic', 'Experimental',
   'Spiritual', 'Romantic',
+  // New mood categories (v2)
+  'Melancholic', 'Euphoric', 'Kinetic', 'Cinematic', 'Meditative', 'Absurdist',
 ] as const;
 
 export type TasteCategory = typeof TASTE_CATEGORIES[number];
@@ -116,41 +120,51 @@ interface GenreRule {
   categories: TasteCategory[];
 }
 
+// Rules are evaluated in order. The FIRST matching rule for a given genre
+// contributes full weight; subsequent matches contribute with decay (see
+// mapSpotifyGenreToCategories). This prevents a single micro-genre like
+// "dream pop" from triple-counting 'Music' + 'Emotional' + 'Dreamy' with
+// equal weight.
 const SPOTIFY_GENRE_RULES: GenreRule[] = [
-  // Music mood/energy
-  { pattern: /ambient|chillwave|lo-?fi|downtempo|drone|new age|sleep/i, categories: ['Ambient & Chill'] },
-  { pattern: /punk|hardcore|metal|thrash|grindcore|death|doom|sludge/i, categories: ['High Energy', 'Intense & Dark'] },
-  { pattern: /edm|house|techno|trance|drum and bass|dubstep|rave|hardstyle/i, categories: ['High Energy'] },
-  { pattern: /sad|melanchol|emo[^t]|depressive|dark/i, categories: ['Emotional', 'Intense & Dark'] },
-  { pattern: /happy|party|fun|summer|beach/i, categories: ['High Energy', 'Funny & Light'] },
-  { pattern: /romantic|love|ballad|serenade/i, categories: ['Romantic', 'Emotional'] },
-  { pattern: /nostalg|retro|vintage|old school|classic/i, categories: ['Nostalgic'] },
-  { pattern: /experimental|avant|noise|glitch|abstract|art /i, categories: ['Experimental'] },
-  { pattern: /spiritual|gospel|worship|christian|devotional|chant/i, categories: ['Spiritual'] },
+  // Mood/energy (most specific first)
+  { pattern: /shoegaze|dream pop|slowcore|post-rock|math rock/i, categories: ['Music', 'Cinematic', 'Experimental'] },
+  { pattern: /ambient|chillwave|lo-?fi|downtempo|drone|new age|sleep/i, categories: ['Ambient & Chill', 'Meditative'] },
+  { pattern: /punk|hardcore|metal|thrash|grindcore|death metal|doom|sludge|black metal/i, categories: ['High Energy', 'Intense & Dark'] },
+  { pattern: /edm|house|techno|trance|drum and bass|dubstep|rave|hardstyle|breakbeat/i, categories: ['High Energy', 'Kinetic'] },
+  { pattern: /sad|melanchol|emo[^t]|depressive|gloom/i, categories: ['Emotional', 'Melancholic'] },
+  { pattern: /happy|party|fun|summer|beach|feel-good/i, categories: ['Euphoric', 'Funny & Light'] },
+  { pattern: /romantic|love songs|ballad|serenade/i, categories: ['Romantic', 'Emotional'] },
+  { pattern: /nostalg|retro|vintage|old school|oldies/i, categories: ['Nostalgic'] },
+  { pattern: /experimental|avant[- ]?garde|noise|glitch|abstract|musique concrete/i, categories: ['Experimental', 'Cinematic'] },
+  { pattern: /spiritual|gospel|worship|christian|devotional|chant|sacred/i, categories: ['Spiritual'] },
+  { pattern: /vaporwave|synthwave|retrowave|darkwave|coldwave/i, categories: ['Nostalgic', 'Experimental', 'Cinematic'] },
+  { pattern: /weirdcore|hyperpop|digicore|dariacore/i, categories: ['Experimental', 'Absurdist', 'Kinetic'] },
 
   // Genre families
-  { pattern: /jazz|bop|swing|dixieland|fusion/i, categories: ['Music', 'Intellectual'] },
-  { pattern: /classical|orchestra|symphony|chamber|baroque|opera/i, categories: ['Music', 'Intellectual'] },
-  { pattern: /hip hop|rap|trap|drill|boom bap|grime/i, categories: ['Music', 'High Energy'] },
-  { pattern: /rock|grunge|garage|psychedelic|shoegaze|post-rock/i, categories: ['Music'] },
-  { pattern: /pop|synth-?pop|electro-?pop|dream pop|indie pop/i, categories: ['Music'] },
+  { pattern: /jazz|bebop|bop|swing|dixieland|fusion/i, categories: ['Music', 'Intellectual'] },
+  { pattern: /classical|orchestra|symphony|chamber|baroque|opera|romantic era/i, categories: ['Music', 'Intellectual', 'Cinematic'] },
+  { pattern: /hip hop|rap|trap|drill|boom bap|grime|phonk/i, categories: ['Music', 'High Energy', 'Kinetic'] },
+  { pattern: /(^|\W)rock(\W|$)|grunge|garage rock|psychedelic rock|stoner rock/i, categories: ['Music'] },
+  { pattern: /(^|\W)pop(\W|$)|synth-?pop|electro-?pop|art pop|bubblegum/i, categories: ['Music'] },
+  { pattern: /indie pop|indie rock|indie folk|bedroom pop/i, categories: ['Music', 'Experimental'] },
   { pattern: /r&b|soul|funk|neo-?soul|motown/i, categories: ['Music', 'Emotional'] },
-  { pattern: /folk|acoustic|singer-songwriter|americana/i, categories: ['Music', 'Nostalgic'] },
-  { pattern: /country|bluegrass|honky/i, categories: ['Music', 'Nostalgic'] },
-  { pattern: /reggae|ska|dub|dancehall/i, categories: ['Music'] },
-  { pattern: /latin|salsa|reggaeton|bachata|cumbia|bossa/i, categories: ['Music', 'Dance'] },
-  { pattern: /african|afrobeat|highlife|soukous/i, categories: ['Music'] },
-  { pattern: /k-?pop|j-?pop|c-?pop|anime|city pop/i, categories: ['Music'] },
-  { pattern: /world|ethnic|tribal|traditional/i, categories: ['Music'] },
-  { pattern: /soundtrack|score|cinematic|film/i, categories: ['Music', 'Film'] },
-  { pattern: /dance|disco|groove/i, categories: ['Music', 'Dance', 'High Energy'] },
+  { pattern: /folk|acoustic|singer-songwriter|americana/i, categories: ['Music', 'Nostalgic', 'Melancholic'] },
+  { pattern: /country|bluegrass|honky|alt-country/i, categories: ['Music', 'Nostalgic'] },
+  { pattern: /reggae|ska|dub|dancehall/i, categories: ['Music', 'Kinetic'] },
+  { pattern: /latin|salsa|reggaeton|bachata|cumbia|bossa|merengue|tango/i, categories: ['Music', 'Dance', 'Kinetic'] },
+  { pattern: /african|afrobeat|afropop|highlife|soukous|amapiano/i, categories: ['Music', 'Kinetic'] },
+  { pattern: /k-?pop|j-?pop|c-?pop|city pop|anime/i, categories: ['Music', 'Euphoric'] },
+  { pattern: /world|ethnic|tribal|traditional|folkloric/i, categories: ['Music'] },
+  { pattern: /soundtrack|score|cinematic|film music|post-minimalism/i, categories: ['Music', 'Film', 'Cinematic'] },
+  { pattern: /dance|disco|groove|funky house|nu-disco/i, categories: ['Music', 'Dance', 'Kinetic'] },
+  { pattern: /blues|delta|chicago blues/i, categories: ['Music', 'Nostalgic', 'Melancholic'] },
 
   // Non-music
-  { pattern: /podcast|talk|spoken/i, categories: ['Education'] },
-  { pattern: /comedy|humor|funny/i, categories: ['Comedy', 'Funny & Light'] },
-  { pattern: /meditat|mindful|yoga|relaxation/i, categories: ['Wellness', 'Ambient & Chill'] },
-  { pattern: /nature|rain|ocean|forest|birds/i, categories: ['Nature', 'Ambient & Chill'] },
-  { pattern: /asmr/i, categories: ['ASMR', 'Ambient & Chill'] },
+  { pattern: /podcast|talk show|spoken word/i, categories: ['Education'] },
+  { pattern: /comedy|humor|stand-?up/i, categories: ['Comedy', 'Funny & Light', 'Absurdist'] },
+  { pattern: /meditat|mindful|yoga|relaxation|binaural/i, categories: ['Wellness', 'Meditative', 'Ambient & Chill'] },
+  { pattern: /nature sounds|rain|ocean|forest|birds|ASMR nature/i, categories: ['Nature', 'Ambient & Chill', 'Meditative'] },
+  { pattern: /\bASMR\b|tingles/i, categories: ['ASMR', 'Ambient & Chill', 'Meditative'] },
 ];
 
 // --- Mapping Functions ---
@@ -180,13 +194,38 @@ export function mapSpotifyGenreToCategories(genre: string): TasteCategory[] {
   return [...new Set(matched)]; // Deduplicate
 }
 
+/**
+ * Map a genre to weighted category contributions. The first matched rule
+ * contributes full weight 1.0 per category; the second 0.6; third 0.36 (0.6
+ * geometric decay). This keeps multi-faceted genres (e.g. "progressive
+ * psychedelic metal") from triple-dominating the primary signal.
+ */
+export function mapSpotifyGenreToWeighted(genre: string): Map<TasteCategory, number> {
+  const weights = new Map<TasteCategory, number>();
+  let ruleHit = 0;
+  const decay = 0.6;
+
+  for (const rule of SPOTIFY_GENRE_RULES) {
+    if (rule.pattern.test(genre)) {
+      const ruleWeight = Math.pow(decay, ruleHit);
+      for (const cat of rule.categories) {
+        weights.set(cat, (weights.get(cat) || 0) + ruleWeight);
+      }
+      ruleHit++;
+    }
+  }
+
+  if (weights.size === 0) weights.set('Music', 1);
+  return weights;
+}
+
 export function mapSpotifyGenresToCategories(genres: string[]): Map<TasteCategory, number> {
   const counts = new Map<TasteCategory, number>();
 
   for (const genre of genres) {
-    const categories = mapSpotifyGenreToCategories(genre);
-    for (const cat of categories) {
-      counts.set(cat, (counts.get(cat) || 0) + 1);
+    const weighted = mapSpotifyGenreToWeighted(genre);
+    for (const [cat, w] of weighted) {
+      counts.set(cat, (counts.get(cat) || 0) + w);
     }
   }
 

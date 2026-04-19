@@ -128,20 +128,72 @@ export function computeDiversity(weights: CategoryWeights): number {
   return shannonEntropy(values);
 }
 
-// Compute mainstream score from popularity values
+// ----------------------------------------------------------------
+// Mainstream score
+// ----------------------------------------------------------------
+// Spotify popularity is 0-100 but the population distribution is skewed:
+// a popularity of ~40 is actually "moderately mainstream" and ~70 is
+// "very mainstream." Shift and scale so 50 maps to 0.5 and the tails
+// stretch appropriately. Gives more discriminating scores than raw /100.
 export function computeMainstream(popularities: number[]): number {
   if (popularities.length === 0) return 0.5;
   const avg = popularities.reduce((s, v) => s + v, 0) / popularities.length;
-  return avg / 100; // Spotify popularity is 0-100
+  // Raw 0-100 -> logistic around anchor 45 (approximate median user's listens).
+  // This gives 0 near 10, 0.5 near 45, 0.9 near 75, 1 near 95.
+  const anchor = 45;
+  const steepness = 0.09;
+  return 1 / (1 + Math.exp(-steepness * (avg - anchor)));
 }
 
-// Compute freshness: ratio of recent engagement vs. total
+// ----------------------------------------------------------------
+// Freshness: ratio of recent engagement vs. total
+// ----------------------------------------------------------------
+// Legacy signature kept for back-compat but the recommended entry point is
+// `computeFreshnessFromDates`, which uses actual timestamps instead of
+// short/long-term count ratios (the old behavior was almost always ~1.0
+// because Spotify returns 50 items per time range regardless of user
+// activity).
 export function computeFreshness(
   totalItems: number,
-  recentItems: number // items from last 3 months
+  recentItems: number
 ): number {
   if (totalItems === 0) return 0;
   return Math.min(1, recentItems / totalItems);
+}
+
+/**
+ * Compute freshness from actual engagement timestamps. A user who saved
+ * half of their Spotify library in the last 30 days is genuinely "fresh";
+ * one whose most recent save was 18 months ago is not.
+ *
+ * - Items within `recentWindowDays` get full weight.
+ * - Items in the next band (3x recent) get half weight.
+ * - Older items contribute 0.
+ *
+ * Returns 0-1 representing share of engagement that is recent.
+ */
+export function computeFreshnessFromDates(
+  timestamps: Array<string | null | undefined>,
+  recentWindowDays = 30,
+  now: Date = new Date()
+): number {
+  const valid = timestamps
+    .map(t => (t ? new Date(t).getTime() : NaN))
+    .filter(t => !Number.isNaN(t));
+  if (valid.length === 0) return 0;
+
+  const nowMs = now.getTime();
+  const recentMs = recentWindowDays * 24 * 60 * 60 * 1000;
+  const midMs = recentWindowDays * 3 * 24 * 60 * 60 * 1000;
+
+  let weighted = 0;
+  for (const t of valid) {
+    const ageMs = nowMs - t;
+    if (ageMs <= recentMs) weighted += 1;
+    else if (ageMs <= midMs) weighted += 0.5;
+    // else weighted += 0
+  }
+  return Math.min(1, weighted / valid.length);
 }
 
 // Compute audio signature from track features
