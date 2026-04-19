@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { exchangeYouTubeCode, getGoogleUserInfo } from '@/lib/oauth/youtube';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getBaseUrl } from '@/lib/url';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state');
   const error = searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+  const appUrl = getBaseUrl(request);
 
   if (error) {
     return NextResponse.redirect(`${appUrl}/?error=youtube_denied`);
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
 
   try {
     // Exchange code for tokens
-    const tokens = await exchangeYouTubeCode(code);
+    const tokens = await exchangeYouTubeCode(code, appUrl);
 
     // Get user info from Google
     const googleUser = await getGoogleUserInfo(tokens.access_token);
@@ -173,7 +174,7 @@ export async function GET(request: Request) {
       path: '/',
     });
 
-    // Trigger async sync (fire and forget)
+    // Trigger async sync (fire and forget) — baseUrl already request-derived
     fetch(`${appUrl}/api/sync/youtube`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

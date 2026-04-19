@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createServiceClient } from '@/lib/supabase/server';
@@ -13,7 +13,19 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const cookieStore = await cookies();
+  const headerStore = await headers();
   const userId = cookieStore.get('ajax_user_id')?.value;
+
+  // Derive base URL from request headers so share link always matches the
+  // actual deployment URL (not a stale build-time env var).
+  const fwdHost = headerStore.get('x-forwarded-host');
+  const fwdProto = headerStore.get('x-forwarded-proto');
+  const host = headerStore.get('host');
+  const appUrl = fwdHost
+    ? `${fwdProto || 'https'}://${fwdHost}`
+    : host
+    ? `https://${host}`
+    : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   if (!userId) {
     redirect('/');
@@ -251,7 +263,7 @@ export default async function DashboardPage({
               </p>
               <div className="flex items-center justify-center gap-3">
                 <code className="bg-ajax-bg px-4 py-2 rounded-lg text-ajax-accent text-sm font-mono">
-                  {process.env.NEXT_PUBLIC_APP_URL}/{user.username}
+                  {appUrl}/{user.username}
                 </code>
                 <button className="btn-secondary text-sm">
                   Copy

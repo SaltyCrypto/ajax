@@ -12,10 +12,14 @@ const SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ];
 
-export function getYouTubeAuthUrl(state: string): string {
+export function youtubeRedirectUri(baseUrl: string): string {
+  return `${baseUrl.replace(/\/$/, '')}/api/auth/youtube/callback`;
+}
+
+export function getYouTubeAuthUrl(state: string, baseUrl: string): string {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/youtube/callback`,
+    redirect_uri: youtubeRedirectUri(baseUrl),
     response_type: 'code',
     scope: SCOPES.join(' '),
     access_type: 'offline',
@@ -25,7 +29,7 @@ export function getYouTubeAuthUrl(state: string): string {
   return `${GOOGLE_AUTH_URL}?${params.toString()}`;
 }
 
-export async function exchangeYouTubeCode(code: string): Promise<{
+export async function exchangeYouTubeCode(code: string, baseUrl: string): Promise<{
   access_token: string;
   refresh_token: string;
   expires_in: number;
@@ -37,7 +41,7 @@ export async function exchangeYouTubeCode(code: string): Promise<{
       code,
       client_id: process.env.GOOGLE_CLIENT_ID!,
       client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/youtube/callback`,
+      redirect_uri: youtubeRedirectUri(baseUrl),
       grant_type: 'authorization_code',
     }),
   });

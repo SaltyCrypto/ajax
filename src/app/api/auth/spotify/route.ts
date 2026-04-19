@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSpotifyAuthUrl } from '@/lib/oauth/spotify';
+import { getBaseUrl } from '@/lib/url';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('userId');
+  const baseUrl = getBaseUrl(request);
 
   const state = Buffer.from(
     JSON.stringify({
@@ -23,6 +25,6 @@ export async function GET(request: Request) {
     path: '/',
   });
 
-  const authUrl = getSpotifyAuthUrl(state);
+  const authUrl = getSpotifyAuthUrl(state, baseUrl);
   return NextResponse.redirect(authUrl);
 }

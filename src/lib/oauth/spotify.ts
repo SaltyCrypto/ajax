@@ -15,11 +15,20 @@ const SCOPES = [
   'user-read-private',
 ];
 
-export function getSpotifyAuthUrl(state: string): string {
+export function spotifyRedirectUri(baseUrl: string): string {
+  // SPOTIFY_REDIRECT_URI still wins if explicitly set (lets you pin a specific
+  // URI registered in the Spotify dashboard), otherwise derive from baseUrl.
+  return (
+    process.env.SPOTIFY_REDIRECT_URI ||
+    `${baseUrl.replace(/\/$/, '')}/api/auth/spotify/callback`
+  );
+}
+
+export function getSpotifyAuthUrl(state: string, baseUrl: string): string {
   const params = new URLSearchParams({
     client_id: process.env.SPOTIFY_CLIENT_ID!,
     response_type: 'code',
-    redirect_uri: `${process.env.SPOTIFY_REDIRECT_URI || process.env.NEXT_PUBLIC_APP_URL + '/api/auth/spotify/callback'}`,
+    redirect_uri: spotifyRedirectUri(baseUrl),
     scope: SCOPES.join(' '),
     state,
     show_dialog: 'true',
@@ -27,7 +36,7 @@ export function getSpotifyAuthUrl(state: string): string {
   return `${SPOTIFY_AUTH_URL}?${params.toString()}`;
 }
 
-export async function exchangeSpotifyCode(code: string): Promise<{
+export async function exchangeSpotifyCode(code: string, baseUrl: string): Promise<{
   access_token: string;
   refresh_token: string;
   expires_in: number;
@@ -42,7 +51,7 @@ export async function exchangeSpotifyCode(code: string): Promise<{
     },
     body: new URLSearchParams({
       code,
-      redirect_uri: `${process.env.SPOTIFY_REDIRECT_URI || process.env.NEXT_PUBLIC_APP_URL + '/api/auth/spotify/callback'}`,
+      redirect_uri: spotifyRedirectUri(baseUrl),
       grant_type: 'authorization_code',
     }),
   });

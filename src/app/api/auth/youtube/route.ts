@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getYouTubeAuthUrl } from '@/lib/oauth/youtube';
+import { getBaseUrl } from '@/lib/url';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('userId');
+  const baseUrl = getBaseUrl(request);
 
   // Generate state token for CSRF protection
   const state = Buffer.from(
@@ -25,6 +27,6 @@ export async function GET(request: Request) {
     path: '/',
   });
 
-  const authUrl = getYouTubeAuthUrl(state);
+  const authUrl = getYouTubeAuthUrl(state, baseUrl);
   return NextResponse.redirect(authUrl);
 }

@@ -6,11 +6,13 @@ import {
   fetchChannelDetails,
   parseDuration,
 } from '@/lib/oauth/youtube';
+import { getBaseUrl } from '@/lib/url';
 
 export async function POST(request: Request) {
   try {
     const { userId } = await request.json();
     if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+    const appUrl = getBaseUrl(request);
 
     const supabase = createServiceClient();
 
@@ -108,8 +110,7 @@ export async function POST(request: Request) {
         })
         .eq('id', connection.id);
 
-      // Trigger taste computation
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+      // Trigger taste computation (baseUrl already request-derived above)
       fetch(`${appUrl}/api/taste/compute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

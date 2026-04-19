@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { exchangeSpotifyCode, getSpotifyProfile } from '@/lib/oauth/spotify';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getBaseUrl } from '@/lib/url';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state');
   const error = searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+  const appUrl = getBaseUrl(request);
 
   if (error) {
     return NextResponse.redirect(`${appUrl}/dashboard?error=spotify_denied`);
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
   cookieStore.delete('spotify_oauth_state');
 
   try {
-    const tokens = await exchangeSpotifyCode(code);
+    const tokens = await exchangeSpotifyCode(code, appUrl);
     const spotifyUser = await getSpotifyProfile(tokens.access_token);
     const supabase = createServiceClient();
 
