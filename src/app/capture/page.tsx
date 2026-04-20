@@ -163,13 +163,21 @@ export default async function CapturePage() {
         {bookmarklet ? (
           <>
             <div className="mb-10 flex justify-center">
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              {/*
+                Drag-to-install bookmarklet. This is a Server Component so we
+                can't attach an onClick handler (Next.js 14 forbids passing
+                function props to Client Component slots). A bare anchor is
+                correct: clicking this on /capture runs the bookmarklet
+                against /capture's DOM, finds zero YouTube cards, and posts
+                nothing useful — harmless and self-explanatory. The usable
+                path is: drag, then click from youtube.com.
+              */}
               <a
                 href={bookmarklet}
-                className="inline-block px-6 py-3 rounded-lg bg-ajax-accent text-white font-medium text-sm hover:bg-ajax-accent-light transition-colors cursor-grab active:cursor-grabbing"
-                onClick={(e) => e.preventDefault()}
+                className="inline-block px-6 py-3 rounded-lg bg-ajax-accent text-white font-medium text-sm hover:bg-ajax-accent-light transition-colors cursor-grab active:cursor-grabbing select-none"
+                draggable
               >
-                ↓ Capture my YouTube feed
+                ↓ Drag me to your bookmarks bar
               </a>
             </div>
 
